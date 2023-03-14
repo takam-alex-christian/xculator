@@ -13,41 +13,47 @@ import React, { useState, useEffect, useRef } from 'react'
 
 import { Box, Stack, Paper, Typography, } from '@mui/material'
 
-import { Input, Sheet } from '@mui/joy'
-import { InputUnstyled } from '@mui/base';
+import { Sheet } from '@mui/joy'
+
+// types and interfaces
+interface XDataType {
+  screen: string
+  ans: number,
+  hTxn: Array<string>,
+  clearScreen: Boolean
+}
 
 
 function App() {
 
   const appRef = useRef(null);
 
-  const [xData, setXData] = useState<{
-    screen: string,
-    ans: string,
-    hTxn: Array<String>
-  }>({
+  const [xData, setXData] = useState<XDataType>({
     screen: "",
-    ans: "0",
-    hTxn: []
+    ans: 0,
+    hTxn: [],
+    clearScreen: false
   })
-
-
-  const ButtonValues = {
-    clear: "C",
-    delete: "Del",
-    percentage: "%"
-  }
 
   const [displayFocus, setDisplayFocus] = useState({
     screen: true,
     ans: false
   })
 
+  // const [clearScreen, setClearScreen] = useState(false);
+
+  const ButtonValues = {
+    clear: "C",
+    delete: "Del",
+    percentage: "%",
+    answer: 'ans'
+  }
+
   const buttonGap = 1
 
   const calButtonValues = "789456123"
   const calOperations = "/*-+"
-  const calLastRow = "M0.="
+  const calLastRow = "0.="
 
 
   // screen validation
@@ -70,6 +76,9 @@ function App() {
 
     // valid if equal button is pressed as well
     else if (inputKey.toLowerCase() == '=') isValid = true
+
+    //valid if equal button is pressed
+    // else if (inputKey.toLowerCase() == 'ans') isValid = true
 
     // digit validation
     else if (parseInt(inputKey) >= 0 && parseInt(inputKey) <= 9) {
@@ -109,30 +118,39 @@ function App() {
     // if ans doesn't have the focus and the user presses the equal button
     else if (inputKey.toLowerCase() == '=') {
 
-      if (calOperations.indexOf(xData.screen.slice(-1)) === -1) {
-        setXData((prev) => {
-          return { ...prev, ans: eval(prev.screen) }
-        })
-      } else {
-        console.log(xData.screen.substring(0, -1))
-        setXData((prev) => {
-          return { ...prev, ans: eval(prev.screen.substring(0, -1)) }
-        })
-      }
+      // if (calOperations.indexOf(xData.screen.slice(-1)) === -1) {
+      setXData((prev) => {
+        return { ...prev, ans: calOperations.indexOf(xData.screen.slice(-1)) === -1 ? eval(prev.screen) : eval(prev.screen.substring(0, -1)), clearScreen: true }
+      })
+
+
+
+      // } else {
+      //   console.log(xData.screen.substring(0, -1))
+      //   setXData((prev) => {
+      //     return { ...prev, ans: eval(prev.screen.substring(0, -1)) }
+      //   })
+      // }
       // eval
 
       // we can now register the previous operations to historical transactions
 
       if (displayFocus.ans == false) switchDisplayFocus()
+      console.log(xData)
 
 
     }
 
     // register non special keys such as digits
     else {
+
       setXData((prev) => {
-        return { ...prev, screen: prev.screen.concat(inputKey) }
+        // if(prev.ans.length > 0) console.log("test correct")
+        // console.log(xData)
+        return { ...prev, screen: prev.clearScreen ? inputKey : prev.screen.concat(inputKey), clearScreen: false }
       })
+
+      // if (xData.clearScreen) setXData(false); // is true as soon as ans is pressed
 
     }
   }
@@ -150,13 +168,37 @@ function App() {
     // console.log(e.currentTarget.value);
 
     if (isInputValid(e.currentTarget.value)) registerInputKey(e.currentTarget.value)
-    else if ("c/del/m".toLowerCase().split(new RegExp('[/]')).indexOf(e.currentTarget.value.toLowerCase()) !== -1){
-      
-      setXData((prev)=>{
-        return {...prev, screen: ""}
-      })
+    else if ("c/del/m".toLowerCase().split(new RegExp('[/]')).indexOf(e.currentTarget.value.toLowerCase()) !== -1) {
 
-      
+      if (e.currentTarget.value.toLowerCase() == 'del') {
+
+        setXData((prev) => {
+
+          // we create a temporary array out of the prev screen
+          let tmpScreenArray = prev.screen.substring(0).split('');
+
+          // then we delete the last item
+          tmpScreenArray.pop();
+
+
+          return { ...prev, screen: [...tmpScreenArray].join('') }  //now we turn tmpScreenArray into a string and pass it as the new value of screen
+        })
+      } else if (e.currentTarget.value.toLowerCase() == 'c') {
+
+        setXData((prev) => {
+          return { ...prev, screen: "" }
+        })
+
+      } else if (e.currentTarget.value.toLowerCase() == 'ans') {
+
+        // we just add ans to the screen as input for further calculations
+        setXData((prev) => {
+          return { ...prev, screen: prev.screen.concat(prev.ans.toString()) }
+        })
+
+      }
+
+
     }
 
     // console.log("c/del/m".toLowerCase().split(new RegExp('[/]')))
@@ -199,7 +241,6 @@ function App() {
               {xData.hTxn.map((txn) => {
                 return (<Box minHeight={"0.5rem"} >{txn}</Box>)
               })}
-
 
             </Stack>
           </Sheet>
@@ -258,6 +299,7 @@ function App() {
         </Stack>
 
         <Stack flexDirection={"row"} gap={buttonGap}>
+          <Xbuttons.SquareButton value={ButtonValues.answer} onClick={clickHandler} />
           {calLastRow.split('').map((lastRowValue, index) => {
             return (<Xbuttons.SquareButton key={index} value={lastRowValue} onClick={clickHandler} />)
           })}
